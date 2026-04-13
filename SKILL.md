@@ -133,7 +133,7 @@ Example:
 ```
 [SETUP] predict-agent found, checking dependencies...
 [SETUP] awp-wallet configured: 0x1234...abcd
-[SESSION] wallet unlocked, ready to predict
+[SESSION] wallet ready to predict
 ```
 
 ## Setup (Automatic)
@@ -176,7 +176,7 @@ awp-wallet receive
 
 | Output | Meaning | Next Step |
 |--------|---------|-----------|
-| Returns `{"eoaAddress": "0x..."}` | Wallet EXISTS | Skip to Step 3 (unlock) |
+| Returns `{"eoaAddress": "0x..."}` | Wallet EXISTS | Done, run preflight |
 | Error / "not initialized" | No wallet | Run Step 2 (init) |
 
 **Step 2 — Create wallet (ONLY if none exists):**
@@ -187,29 +187,16 @@ awp-wallet init
 
 This creates a new agent wallet. Only run this once, ever.
 
-**Step 3 — Unlock wallet:**
-
-```
-export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)
-```
-
-This is the ONLY command you need to run regularly. Run it:
-- When starting a new shell session
-- When the token expires (after 24 hours)
-- When preflight reports `WALLET_NOT_CONFIGURED` or `AUTH_FAILED`
-
 **Common Mistakes:**
 
 | Symptom | Wrong Fix | Correct Fix |
 |---------|-----------|-------------|
-| "WALLET_NOT_CONFIGURED" | Running `awp-wallet init` | Run unlock command above |
-| "AUTH_FAILED" | Running `awp-wallet init` | Run unlock command above |
-| "token expired" | Running `awp-wallet init` | Run unlock command above |
-| New shell, commands fail | Running `awp-wallet init` | Run unlock command above |
+| "WALLET_NOT_CONFIGURED" | Running `awp-wallet init` | Check if wallet exists first with `awp-wallet receive` |
+| "AUTH_FAILED" | Running `awp-wallet init` | Run `predict-agent preflight` for diagnosis |
 
-**The unlock command is idempotent.** Run it as many times as you want — it just refreshes the token. The init command is DESTRUCTIVE — it overwrites your wallet.
+**The init command is DESTRUCTIVE — it overwrites your wallet.** Only run init when you confirmed no wallet exists.
 
-After setting `AWP_WALLET_TOKEN`, run `predict-agent preflight` again. Preflight handles AWP network registration automatically (gasless, free).
+After wallet setup, run `predict-agent preflight`. Preflight handles AWP network registration automatically (gasless, free).
 
 ## Workflow
 
@@ -298,7 +285,7 @@ When a command returns `ok: false`, the error object tells you exactly what happ
 | `AUTH_FAILED` | Wallet issue. Run `predict-agent preflight` to diagnose. |
 | `SERVICE_UNAVAILABLE` | Server dependency temporarily down. Wait a few seconds and retry. |
 | `COORDINATOR_UNREACHABLE` | Network issue. Wait 30 seconds, then retry `predict-agent preflight`. |
-| `AWP_NOT_REGISTERED` | Wallet token needed. Run `awp-wallet unlock --duration 86400 --scope full`. |
+| `AWP_NOT_REGISTERED` | Run `predict-agent preflight` — it handles registration automatically. |
 | `AWP_REGISTRATION_PENDING` | Wait and retry preflight. Registration is being confirmed. |
 | `WALLET_NOT_CONFIGURED` | Follow `_internal.next_command` to set up wallet. |
 
