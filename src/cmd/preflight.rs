@@ -108,33 +108,8 @@ pub fn run(server_url: &str) -> Result<()> {
             }
             Ok(false) => {
                 log_info!("preflight [2/4]: not registered, attempting auto-registration...");
-                // Try auto-register
-                let token = std::env::var("AWP_WALLET_TOKEN").unwrap_or_default();
-                if token.is_empty() {
-                    log_error!("preflight [2/4]: AWP_WALLET_TOKEN not set, cannot auto-register");
-                    Output::error_with_debug(
-                        "Not registered on AWP network. Wallet token needed for auto-registration.",
-                        "AWP_NOT_REGISTERED",
-                        "dependency",
-                        false,
-                        "Run: export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)",
-                        json!({
-                            "step": "2_awp_registration",
-                            "address": address,
-                            "has_wallet_token": false,
-                        }),
-                        Internal {
-                            next_action: "configure_wallet".into(),
-                            next_command: Some("export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)".into()),
-                            progress: Some("1/4".into()),
-                            ..Default::default()
-                        },
-                    )
-                    .print();
-                    return Ok(());
-                }
-
-                match awp_register::ensure_registered(&address, &token) {
+                // Token is now optional — awp-wallet works without session tokens
+                match awp_register::ensure_registered(&address) {
                     Ok(result) if result.registered => {
                         log_info!(
                             "preflight [2/4]: registration OK — {}{}",

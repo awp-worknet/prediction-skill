@@ -51,7 +51,8 @@ pub fn check_registration(address: &str) -> Result<bool> {
 }
 
 /// Check and auto-register if needed. Gasless, free.
-pub fn ensure_registered(address: &str, wallet_token: &str) -> Result<RegistrationResult> {
+/// Token is optional — awp-wallet now works without session tokens.
+pub fn ensure_registered(address: &str) -> Result<RegistrationResult> {
     let client = build_client();
 
     // Step 1: check current status
@@ -137,7 +138,7 @@ pub fn ensure_registered(address: &str, wallet_token: &str) -> Result<Registrati
 
     // Step 5: sign with awp-wallet
     log_info!("awp_register: step 5/7 — signing EIP-712 data with awp-wallet...");
-    let signature = sign_typed_data(wallet_token, &typed_data)?;
+    let signature = sign_typed_data(&typed_data)?;
     log_info!("awp_register: signature obtained ({}...{})",
         &signature[..8.min(signature.len())],
         &signature[signature.len().saturating_sub(6)..]
@@ -311,24 +312,33 @@ fn awp_jsonrpc(client: &Client, method: &str, params: Value) -> Result<Value> {
         ))
 }
 
-fn sign_typed_data(wallet_token: &str, typed_data: &Value) -> Result<String> {
+fn sign_typed_data(typed_data: &Value) -> Result<String> {
     let wallet_bin = find_awp_wallet()?;
     let data_str = serde_json::to_string(typed_data)?;
 
-    log_debug!(
-        "awp_register: calling {} sign-typed-data --token *** --data <{} bytes>",
-        wallet_bin.display(),
-        data_str.len()
-    );
+    // Token is optional — awp-wallet now works without session tokens
+    let token = std::env::var("AWP_WALLET_TOKEN").unwrap_or_default();
+
+    // Build args — only include --token if provided (backward compat)
+    let mut args = vec!["sign-typed-data"];
+    if !token.is_empty() {
+        args.extend_from_slice(&["--token", &token]);
+        log_debug!(
+            "awp_register: calling {} sign-typed-data --token *** --data <{} bytes>",
+            wallet_bin.display(),
+            data_str.len()
+        );
+    } else {
+        log_debug!(
+            "awp_register: calling {} sign-typed-data --data <{} bytes>",
+            wallet_bin.display(),
+            data_str.len()
+        );
+    }
+    args.extend_from_slice(&["--data", &data_str]);
 
     let output = std::process::Command::new(&wallet_bin)
-        .args([
-            "sign-typed-data",
-            "--token",
-            wallet_token,
-            "--data",
-            &data_str,
-        ])
+        .args(&args)
         .output()
         .context(format!(
             "Failed to run awp-wallet sign-typed-data at {}. Is awp-wallet installed?",

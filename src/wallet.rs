@@ -115,7 +115,7 @@ impl WalletStatus {
                 "Wallet directory exists but empty — may need init or recovery".into()
             }
             (true, true, false) => {
-                "Wallet exists but locked — run awp-wallet unlock (DO NOT run init)".into()
+                "Wallet exists but not accessible — check awp-wallet installation (DO NOT run init)".into()
             }
             (true, _, true) => format!(
                 "Wallet ready: {}",
@@ -144,11 +144,11 @@ impl WalletStatus {
             // Already working
             "predict-agent preflight"
         } else if self.wallet_dir_exists || self.has_keystore {
-            // Wallet exists but locked — just unlock
-            "export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)"
+            // Wallet exists but not accessible — check installation
+            "predict-agent preflight"
         } else if self.cli_installed {
-            // No wallet — safe to init
-            "awp-wallet init && export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)"
+            // No wallet — safe to init (no unlock needed anymore)
+            "awp-wallet init"
         } else {
             // Need to install CLI first
             "curl -sSL https://raw.githubusercontent.com/predictAworknet/prediction-skill/main/install.sh | sh"
@@ -160,10 +160,10 @@ impl WalletStatus {
         if self.can_receive {
             "Wallet is ready. Run: predict-agent preflight".into()
         } else if self.wallet_dir_exists || self.has_keystore {
-            "Wallet exists but locked. Run: export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)\n\
+            "Wallet exists but not accessible. Check awp-wallet installation.\n\
              IMPORTANT: Do NOT run awp-wallet init — that would overwrite your existing wallet!".into()
         } else if self.cli_installed {
-            "No wallet found. Run: awp-wallet init && export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)".into()
+            "No wallet found. Run: awp-wallet init".into()
         } else {
             "awp-wallet not installed. Install it first, then run init.".into()
         }

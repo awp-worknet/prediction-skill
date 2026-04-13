@@ -127,12 +127,13 @@ fn sign_with_wallet(
     path: &str,
     body_hash: &str,
 ) -> Result<String> {
-    let token = std::env::var("AWP_WALLET_TOKEN").context(
-        "AWP_WALLET_TOKEN not set. You need to unlock your wallet first.\n\
-         Run: awp-wallet unlock --duration 86400 --scope full\n\
-         Then: export AWP_WALLET_TOKEN=<token from output>",
-    )?;
-    log_debug!("AWP_WALLET_TOKEN present (length={})", token.len());
+    // Token is now optional — awp-wallet works without session tokens
+    let token = std::env::var("AWP_WALLET_TOKEN").unwrap_or_default();
+    if !token.is_empty() {
+        log_debug!("AWP_WALLET_TOKEN present (length={})", token.len());
+    } else {
+        log_debug!("AWP_WALLET_TOKEN not set — using tokenless mode");
+    }
 
     let message = format!(
         "AWP Predict WorkNet\nAddress: {}\nTimestamp: {}\nMethod: {}\nPath: {}\nBody-Hash: {}",
@@ -145,10 +146,19 @@ fn sign_with_wallet(
     log_debug!("EIP-191 message to sign:\n{}", message);
 
     let wallet_bin = find_awp_wallet()?;
-    log_debug!("Calling: {} sign-message --token ***  --message <...>", wallet_bin.display());
+
+    // Build args — only include --token if provided (backward compat)
+    let mut args = vec!["sign-message"];
+    if !token.is_empty() {
+        args.extend_from_slice(&["--token", &token]);
+        log_debug!("Calling: {} sign-message --token *** --message <...>", wallet_bin.display());
+    } else {
+        log_debug!("Calling: {} sign-message --message <...>", wallet_bin.display());
+    }
+    args.extend_from_slice(&["--message", &message]);
 
     let output = std::process::Command::new(&wallet_bin)
-        .args(["sign-message", "--token", &token, "--message", &message])
+        .args(&args)
         .output()
         .context(format!(
             "Failed to execute awp-wallet at {}. Is it installed and executable?",
@@ -164,11 +174,11 @@ fn sign_with_wallet(
             stderr.trim(),
             stdout.trim()
         );
-        // Check for common failure patterns
+        // Check for common failure patterns (legacy token errors, shouldn't happen with tokenless mode)
         if stderr.contains("expired") || stderr.contains("invalid token") {
             bail!(
-                "awp-wallet session expired or token invalid. Re-unlock your wallet:\n\
-                 awp-wallet unlock --duration 86400 --scope full\n\
+                "awp-wallet signing failed (possibly old token issue). Try without AWP_WALLET_TOKEN:\n\
+                 unset AWP_WALLET_TOKEN && predict-agent preflight\n\
                  Original error: {}",
                 stderr.trim()
             );
@@ -286,8 +296,8 @@ fn get_address_from_wallet() -> Result<String> {
             stdout.trim()
         );
         bail!(
-            "awp-wallet is locked or not set up. Run:\n\
-             awp-wallet unlock --duration 86400 --scope full\n\
+            "awp-wallet receive failed. Make sure wallet is initialized:\n\
+             awp-wallet init  (only if no wallet exists)\n\
              Error: {}",
             stderr.trim()
         );
