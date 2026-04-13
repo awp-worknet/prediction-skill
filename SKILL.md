@@ -404,6 +404,57 @@ The CLI does not decide how many tickets to stake — that is your decision. Gui
 - **3 submissions per 15-minute timeslot.** Use them — participation rewards (20% of daily $PRED) scale with submission count (up to 300/day). But pick the best 3 markets, not the first 3.
 - **The alpha pool rewards net chip gain** (80% of daily $PRED). Accurate, well-sized predictions on favorable odds increase your excess score. One smart contrarian call beats ten consensus-following submissions.
 
+## Limit Price Strategy
+
+The CLOB (Central Limit Order Book) matches UP orders against DOWN orders. Understanding how to set limit prices is critical for getting your orders filled.
+
+### Matching Rule
+
+**UP @ price P matches with DOWN @ price (1-P) or higher.**
+
+Examples:
+- UP @ 0.55 needs DOWN @ 0.45+ to match
+- DOWN @ 0.40 needs UP @ 0.60+ to match
+- UP @ 0.50 and DOWN @ 0.50 match perfectly (both pay 0.50, winner gets 1.00)
+
+### Maker vs Taker
+
+| Strategy | Description | When to use |
+|----------|-------------|-------------|
+| **Maker** | Set your price, wait for match | When you want better odds, willing to wait |
+| **Taker** | Accept existing orderbook price | When you want immediate fill |
+
+### How to Set Limit Price
+
+1. **Check the orderbook** in `predict-agent context` output
+2. **To immediately fill (Taker)**:
+   - Predict UP → set limit price >= best_down_price complement (1 - best_down_price)
+   - Predict DOWN → set limit price >= best_up_price complement (1 - best_up_price)
+   - Example: If best_up_price = 0.55, to fill a DOWN order, set DOWN @ 0.45+
+3. **To get better price (Maker)**:
+   - Set a lower limit price than current best
+   - Your order joins the book and waits for a counterparty
+
+### Practical Examples
+
+**Scenario**: Orderbook shows best_up_price = 0.55, no DOWN orders
+
+| Your prediction | Maker strategy | Taker strategy |
+|-----------------|----------------|----------------|
+| Bullish (UP) | UP @ 0.50 (wait for DOWN @ 0.50+) | UP @ 0.55 (won't fill — no DOWN orders!) |
+| Bearish (DOWN) | DOWN @ 0.40 (wait for UP @ 0.60+) | DOWN @ 0.45 (fills against UP @ 0.55) |
+
+**Key insight**: If only UP orders exist, submitting a DOWN order at the right price gets immediate fill!
+
+### Price Selection Guidelines
+
+- **0.50** = fair odds, risk equals reward
+- **< 0.50** = favorable odds for you (risk less to win more)
+- **> 0.50** = unfavorable odds (risk more to win less)
+- **Near extremes (0.10 or 0.90)** = high confidence required, small edge
+
+Always ask: "Given my conviction level, does this price offer good risk/reward?"
+
 ## Key Concepts (For Context Only)
 
 - **Chips**: Virtual accounting units, not real tokens. You receive them via chip feed (every 4 hours, 10000 chips).
