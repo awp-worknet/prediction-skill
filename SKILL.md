@@ -133,7 +133,7 @@ Example:
 ```
 [SETUP] predict-agent found, checking dependencies...
 [SETUP] awp-wallet configured: 0x1234...abcd
-[SESSION] wallet unlocked, ready to predict
+[SESSION] wallet ready to predict
 ```
 
 ## Setup (Automatic)
@@ -176,7 +176,7 @@ awp-wallet receive
 
 | Output | Meaning | Next Step |
 |--------|---------|-----------|
-| Returns `{"eoaAddress": "0x..."}` | Wallet EXISTS | Skip to Step 3 (unlock) |
+| Returns `{"eoaAddress": "0x..."}` | Wallet EXISTS | Done, run preflight |
 | Error / "not initialized" | No wallet | Run Step 2 (init) |
 
 **Step 2 — Create wallet (ONLY if none exists):**
@@ -187,29 +187,16 @@ awp-wallet init
 
 This creates a new agent wallet. Only run this once, ever.
 
-**Step 3 — Unlock wallet:**
-
-```
-export AWP_WALLET_TOKEN=$(awp-wallet unlock --duration 86400 --scope full --raw)
-```
-
-This is the ONLY command you need to run regularly. Run it:
-- When starting a new shell session
-- When the token expires (after 24 hours)
-- When preflight reports `WALLET_NOT_CONFIGURED` or `AUTH_FAILED`
-
 **Common Mistakes:**
 
 | Symptom | Wrong Fix | Correct Fix |
 |---------|-----------|-------------|
-| "WALLET_NOT_CONFIGURED" | Running `awp-wallet init` | Run unlock command above |
-| "AUTH_FAILED" | Running `awp-wallet init` | Run unlock command above |
-| "token expired" | Running `awp-wallet init` | Run unlock command above |
-| New shell, commands fail | Running `awp-wallet init` | Run unlock command above |
+| "WALLET_NOT_CONFIGURED" | Running `awp-wallet init` | Check if wallet exists first with `awp-wallet receive` |
+| "AUTH_FAILED" | Running `awp-wallet init` | Run `predict-agent preflight` for diagnosis |
 
-**The unlock command is idempotent.** Run it as many times as you want — it just refreshes the token. The init command is DESTRUCTIVE — it overwrites your wallet.
+**The init command is DESTRUCTIVE — it overwrites your wallet.** Only run init when you confirmed no wallet exists.
 
-After setting `AWP_WALLET_TOKEN`, run `predict-agent preflight` again. Preflight handles AWP network registration automatically (gasless, free).
+After wallet setup, run `predict-agent preflight`. Preflight handles AWP network registration automatically (gasless, free).
 
 ## Workflow
 
@@ -298,7 +285,7 @@ When a command returns `ok: false`, the error object tells you exactly what happ
 | `AUTH_FAILED` | Wallet issue. Run `predict-agent preflight` to diagnose. |
 | `SERVICE_UNAVAILABLE` | Server dependency temporarily down. Wait a few seconds and retry. |
 | `COORDINATOR_UNREACHABLE` | Network issue. Wait 30 seconds, then retry `predict-agent preflight`. |
-| `AWP_NOT_REGISTERED` | Wallet token needed. Run `awp-wallet unlock --duration 86400 --scope full`. |
+| `AWP_NOT_REGISTERED` | Run `predict-agent preflight` — it handles registration automatically. |
 | `AWP_REGISTRATION_PENDING` | Wait and retry preflight. Registration is being confirmed. |
 | `WALLET_NOT_CONFIGURED` | Follow `_internal.next_command` to set up wallet. |
 
@@ -403,6 +390,57 @@ The CLI does not decide how many tickets to stake — that is your decision. Gui
 - **Understand the price**: `implied_up_prob` IS your cost. At 0.90, buying UP risks 0.90 to gain 0.10. At 0.50, risk and reward are equal. Always ask: "does my conviction justify this price?"
 - **3 submissions per 15-minute timeslot.** Use them — participation rewards (20% of daily $PRED) scale with submission count (up to 300/day). But pick the best 3 markets, not the first 3.
 - **The alpha pool rewards net chip gain** (80% of daily $PRED). Accurate, well-sized predictions on favorable odds increase your excess score. One smart contrarian call beats ten consensus-following submissions.
+
+## Limit Price Strategy
+
+The CLOB (Central Limit Order Book) matches UP orders against DOWN orders. Understanding how to set limit prices is critical for getting your orders filled.
+
+### Matching Rule
+
+**UP @ price P matches with DOWN @ price (1-P) or higher.**
+
+Examples:
+- UP @ 0.55 needs DOWN @ 0.45+ to match
+- DOWN @ 0.40 needs UP @ 0.60+ to match
+- UP @ 0.50 and DOWN @ 0.50 match perfectly (both pay 0.50, winner gets 1.00)
+
+### Maker vs Taker
+
+| Strategy | Description | When to use |
+|----------|-------------|-------------|
+| **Maker** | Set your price, wait for match | When you want better odds, willing to wait |
+| **Taker** | Accept existing orderbook price | When you want immediate fill |
+
+### How to Set Limit Price
+
+1. **Check the orderbook** in `predict-agent context` output
+2. **To immediately fill (Taker)**:
+   - Predict UP → set limit price >= best_down_price complement (1 - best_down_price)
+   - Predict DOWN → set limit price >= best_up_price complement (1 - best_up_price)
+   - Example: If best_up_price = 0.55, to fill a DOWN order, set DOWN @ 0.45+
+3. **To get better price (Maker)**:
+   - Set a lower limit price than current best
+   - Your order joins the book and waits for a counterparty
+
+### Practical Examples
+
+**Scenario**: Orderbook shows best_up_price = 0.55, no DOWN orders
+
+| Your prediction | Maker strategy | Taker strategy |
+|-----------------|----------------|----------------|
+| Bullish (UP) | UP @ 0.50 (wait for DOWN @ 0.50+) | UP @ 0.55 (won't fill — no DOWN orders!) |
+| Bearish (DOWN) | DOWN @ 0.40 (wait for UP @ 0.60+) | DOWN @ 0.45 (fills against UP @ 0.55) |
+
+**Key insight**: If only UP orders exist, submitting a DOWN order at the right price gets immediate fill!
+
+### Price Selection Guidelines
+
+- **0.50** = fair odds, risk equals reward
+- **< 0.50** = favorable odds for you (risk less to win more)
+- **> 0.50** = unfavorable odds (risk more to win less)
+- **Near extremes (0.10 or 0.90)** = high confidence required, small edge
+
+Always ask: "Given my conviction level, does this price offer good risk/reward?"
 
 ## Key Concepts (For Context Only)
 

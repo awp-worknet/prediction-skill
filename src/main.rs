@@ -7,7 +7,7 @@
 ///   AWP_ADDRESS          Agent wallet address (for dev/test)
 ///   AWP_PRIVATE_KEY      Agent private key in hex (for dev/test signing)
 ///   AWP_DEV_MODE         Set to "true" to use dev signature bypass
-///   AWP_WALLET_TOKEN     Session token from awp-wallet (production)
+///   AWP_WALLET_TOKEN     Session token from awp-wallet (optional, for backward compat)
 ///   AWP_AGENT_ID         Agent ID for awp-wallet multi-agent support
 
 mod auth;
