@@ -813,27 +813,46 @@ fn build_prompt(
         // Best prices and spread
         let best_up = ob.get("best_up_price").and_then(|v| v.as_str());
         let best_down = ob.get("best_down_price").and_then(|v| v.as_str());
+        let last_price = ob.get("last_price").and_then(|v| v.as_str());
         let spread = ob.get("spread").and_then(|v| v.as_f64());
 
+        // Show last traded price if available
+        if let Some(lp) = last_price {
+            prompt.push_str(&format!("- **Last traded price:** {} (most recent fill)\n", lp));
+        }
+
         if best_up.is_some() || best_down.is_some() {
-            prompt.push_str("- **Best prices available:**\n");
+            prompt.push_str("- **Orderbook — how to get filled:**\n");
+
+            // Explain UP side
             if let Some(up_price) = best_up {
-                prompt.push_str(&format!("  - Buy UP: {} (bid at this price to get filled)\n", up_price));
-            } else {
-                prompt.push_str("  - Buy UP: no orders (your order will wait for counterparty)\n");
+                let up_f: f64 = up_price.parse().unwrap_or(0.5);
+                let complement = 1.0 - up_f;
+                prompt.push_str(&format!("  - Best UP @ {} → to BUY DOWN, bid {:.2}+ (takes this liquidity)\n", up_price, complement));
             }
+
+            // Explain DOWN side
             if let Some(down_price) = best_down {
-                prompt.push_str(&format!("  - Buy DOWN: {} (bid at this price to get filled)\n", down_price));
-            } else {
-                prompt.push_str("  - Buy DOWN: no orders (your order will wait for counterparty)\n");
+                let down_f: f64 = down_price.parse().unwrap_or(0.5);
+                let complement = 1.0 - down_f;
+                prompt.push_str(&format!("  - Best DOWN @ {} → to BUY UP, bid {:.2}+ (takes this liquidity)\n", down_price, complement));
             }
+
+            // Show what's missing
+            if best_up.is_none() {
+                prompt.push_str("  - No UP orders — your UP order will wait for DOWN counterparty\n");
+            }
+            if best_down.is_none() {
+                prompt.push_str("  - No DOWN orders — your DOWN order will wait for UP counterparty\n");
+            }
+
             if let Some(s) = spread {
                 if s > 0.1 {
-                    prompt.push_str(&format!("  - Spread: {:.2} (WIDE — consider placing limit orders)\n", s));
+                    prompt.push_str(&format!("  - Spread: {:.2} (WIDE — good opportunity to provide liquidity)\n", s));
                 } else if s > 0.05 {
                     prompt.push_str(&format!("  - Spread: {:.2} (moderate)\n", s));
                 } else {
-                    prompt.push_str(&format!("  - Spread: {:.2} (tight — good liquidity)\n", s));
+                    prompt.push_str(&format!("  - Spread: {:.2} (tight — take liquidity or wait)\n", s));
                 }
             }
         }
@@ -841,9 +860,9 @@ fn build_prompt(
         prompt.push_str(&format!(
             "- Volume: UP filled={} open={}, DOWN filled={} open={}\n",
             ob.get("up_filled").and_then(|v| v.as_i64()).unwrap_or(0),
-            ob.get("up_open").and_then(|v| v.as_i64()).unwrap_or(0),
+            ob.get("up_open_tickets").and_then(|v| v.as_i64()).unwrap_or(0),
             ob.get("down_filled").and_then(|v| v.as_i64()).unwrap_or(0),
-            ob.get("down_open").and_then(|v| v.as_i64()).unwrap_or(0),
+            ob.get("down_open_tickets").and_then(|v| v.as_i64()).unwrap_or(0),
         ));
     }
     // Last prediction on this asset — enables continuity
