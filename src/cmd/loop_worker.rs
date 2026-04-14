@@ -644,7 +644,7 @@ fn build_prompt(
     prompt.push_str("Output a JSON object with these fields:\n");
     prompt.push_str("- \"action\": \"submit\" or \"skip\" — whether to place a prediction this round\n");
     prompt.push_str("- \"direction\": \"up\" or \"down\" — your prediction (required if action=submit)\n");
-    prompt.push_str("- \"reasoning\": your analysis (80-2000 chars, ≥2 sentences, must mention the asset or a direction word). Required if action=submit. If skipping, briefly explain why.\n");
+    prompt.push_str("- \"reasoning\": your MARKET analysis (80-2000 chars, ≥2 sentences). Required if action=submit. See reasoning requirements below.\n");
     prompt.push_str(&format!("- \"tickets\": how many chips to commit (integer, minimum 100, max {:.0}). Size according to your persona and conviction!\n", balance));
     prompt.push_str(&format!("- \"market_id\": which market (default: \"{}\", required if action=submit)\n", market_id));
     prompt.push_str("- \"limit_price\": (optional, 0.01-0.99) the max price you're willing to pay. If you believe UP has 70% probability, bid 0.60-0.65 to get edge. Higher price = easier fill but less profit. Omit for market order.\n\n");
@@ -667,6 +667,18 @@ fn build_prompt(
     prompt.push_str("- \"action\": \"submit\" or \"skip\"\n");
     prompt.push_str("- \"direction\": \"up\" or \"down\" (if submitting)\n");
     prompt.push_str("- \"reasoning\": 80-2000 chars, ≥2 sentences, must mention the asset or a direction word\n");
+    prompt.push_str("\n## Reasoning Requirements (IMPORTANT)\n\n");
+    prompt.push_str("Your reasoning must be a fresh MARKET analysis — not boilerplate about yourself.\n\n");
+    prompt.push_str("**DO NOT** open with or include:\n");
+    prompt.push_str("- \"I have N open positions...\", \"I CANNOT bet...\", \"Adding to existing position...\"\n");
+    prompt.push_str("- Any reference to your own wallet, persona, strategy name, farm id, leader id, or submission count.\n");
+    prompt.push_str("- Fixed phrases about hedging, flipping, dual-hedge, timeslot quotas, etc.\n");
+    prompt.push_str("- Anything that would read the same if pasted into another market.\n\n");
+    prompt.push_str("**DO** include:\n");
+    prompt.push_str("- At least one specific current market data point from the snapshot above (price, a recent kline value, orderbook best price, spread, or a concrete indicator reading).\n");
+    prompt.push_str("- Why THIS 15m window is likely UP or DOWN based on that data.\n");
+    prompt.push_str("- Vary your opening, sentence structure, and vocabulary each round — never reuse a template.\n\n");
+    prompt.push_str("Two reasonings by you on different markets should read as two different analyses, not two fills of the same template.\n\n");
     prompt.push_str(&format!("- \"tickets\": integer, minimum 100, max {:.0}\n", balance));
     prompt.push_str(&format!("- \"market_id\": which market (default: \"{}\")\n", market_id));
     prompt.push_str("- \"limit_price\": (optional, 0.01-0.99) your bid price\n\n");

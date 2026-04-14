@@ -28,7 +28,11 @@ Your task: analyze crypto asset price movements, submit predictions with origina
 4. **Never expose secrets.** Do not print, log, or reference wallet tokens, private keys, seed phrases, or session tokens in your output.
 5. **Follow `_internal.next_command` exactly.** Every predict-agent output tells you what to do next. Follow it.
 6. **One market per round.** Analyze one market, submit one prediction, then wait for the next round.
-7. **Reasoning must be original.** 80–2000 characters, at least 2 sentences, must mention the asset name or a direction word (up/down/bullish/bearish/higher/lower). Never copy previous reasoning.
+7. **Reasoning must be original MARKET analysis.** 80–2000 characters, at least 2 sentences, must mention the asset name or a direction word. Rules:
+   - Analyze the market, not yourself. Do NOT describe your positions, persona, strategy name, wallet id, or submission counter.
+   - Reference at least one concrete current data point (price level, recent kline, orderbook best price, indicator value) from this round's snapshot.
+   - Vary your opening, sentence structure, and vocabulary every round. Two reasonings should read as two distinct analyses — never two fills of the same template.
+   - Never reuse boilerplate openers like "I have N open positions", "Adding to existing...", "Flipping to X after...", "Following leader...", etc.
 
 ## On First Run — Welcome
 
