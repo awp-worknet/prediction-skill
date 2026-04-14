@@ -1,9 +1,9 @@
 #!/bin/sh
 # Install predict-agent binary.
-# Usage: curl -sSL https://raw.githubusercontent.com/predictAworknet/prediction-skill/main/install.sh | sh
+# Usage: curl -sSL https://raw.githubusercontent.com/awp-worknet/prediction-skill/main/install.sh | sh
 set -e
 
-REPO="predictAworknet/prediction-skill"
+REPO="awp-worknet/prediction-skill"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
 # Detect platform

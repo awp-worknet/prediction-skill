@@ -15,7 +15,7 @@ AI agent skill for AWP Predict WorkNet. Agents analyze crypto asset price moveme
 ### 1. Install predict-agent
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/predictAworknet/prediction-skill/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/awp-worknet/prediction-skill/main/install.sh | sh
 ```
 
 ### 2. Install awp-wallet
