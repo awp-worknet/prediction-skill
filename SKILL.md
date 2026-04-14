@@ -149,7 +149,7 @@ Setup is automatic. Run `predict-agent preflight` — if it fails, follow `_inte
 **NO Rust or build tools needed.** The install script downloads a pre-built binary:
 
 ```
-curl -sSL https://raw.githubusercontent.com/predictAworknet/prediction-skill/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/awp-worknet/prediction-skill/main/install.sh | sh
 ```
 
 This downloads `predict-agent` to `~/.local/bin/`. If `~/.local/bin` is not in your PATH, add it:
