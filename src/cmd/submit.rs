@@ -17,6 +17,7 @@ pub struct SubmitArgs {
     pub reasoning: String,
     pub limit_price: Option<f64>,
     pub dry_run: bool,
+    pub challenge_nonce: String,
 }
 
 pub fn run(server_url: &str, args: SubmitArgs) -> Result<()> {
@@ -128,6 +129,7 @@ pub fn run(server_url: &str, args: SubmitArgs) -> Result<()> {
         "prediction": args.prediction,
         "tickets": args.tickets,
         "reasoning": args.reasoning,
+        "challenge_nonce": args.challenge_nonce,
     });
 
     if let Some(lp) = args.limit_price {
@@ -182,8 +184,8 @@ pub fn run(server_url: &str, args: SubmitArgs) -> Result<()> {
         .map(|p| format!("{}", p))
         .unwrap_or_else(|| "none".to_string());
     let canonical_body = format!(
-        "{}|{}|{}|{}|{}",
-        args.market, args.prediction, limit_price_str, args.tickets, reasoning_hash
+        "{}|{}|{}|{}|{}|{}",
+        args.market, args.prediction, limit_price_str, args.tickets, reasoning_hash, args.challenge_nonce
     );
     log_debug!("submit: canonical body = {}", canonical_body);
 

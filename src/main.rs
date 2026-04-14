@@ -83,6 +83,17 @@ enum Commands {
         /// Preview without submitting
         #[arg(long)]
         dry_run: bool,
+
+        /// Challenge nonce from `predict-agent challenge --market X`
+        #[arg(long)]
+        challenge_nonce: String,
+    },
+
+    /// Fetch an SMHL challenge for a market (nonce + constraints reasoning must satisfy)
+    Challenge {
+        /// Market ID
+        #[arg(long)]
+        market: String,
     },
 
     /// Show current agent status (balance, submissions, etc.)
@@ -168,6 +179,7 @@ fn main() -> Result<()> {
             reasoning,
             limit_price,
             dry_run,
+            challenge_nonce,
         } => cmd::submit::run(
             server,
             cmd::submit::SubmitArgs {
@@ -177,8 +189,10 @@ fn main() -> Result<()> {
                 reasoning,
                 limit_price,
                 dry_run,
+                challenge_nonce,
             },
         )?,
+        Commands::Challenge { market } => cmd::challenge::run(server, &market)?,
         Commands::Status => cmd::status::run(server)?,
         Commands::Result { market } => cmd::result::run(server, &market)?,
         Commands::History { limit } => cmd::history::run(server, limit)?,

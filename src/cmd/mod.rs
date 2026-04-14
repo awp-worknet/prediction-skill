@@ -1,5 +1,6 @@
 pub mod admin_chip_feed;
 pub mod cancel;
+pub mod challenge;
 pub mod context;
 pub mod history;
 pub mod loop_worker;

@@ -387,7 +387,36 @@ fn run_iteration(server_url: &str, openclaw_bin: &str, agent_id: &str) -> Iterat
     let kline_count = klines_data.as_ref().map(|k| k.len()).unwrap_or(0);
     log_info!("loop: target={}, klines={} candles", market_id, kline_count);
 
-    // 6. Build LLM prompt with full context
+    // 5b. Fetch SMHL challenge for this market BEFORE calling LLM.
+    //     Challenge constraints get injected into the prompt so the LLM
+    //     produces reasoning that satisfies them in a single pass.
+    let challenge_path = format!("/api/v1/challenge?market_id={}", market_id);
+    let challenge = match client.get_auth(&challenge_path) {
+        Ok(resp) => resp.get("data").cloned().unwrap_or_else(|| json!({})),
+        Err(e) => {
+            log_warn!("loop: failed to fetch challenge: {}", e);
+            return IterationResult::LlmFailed {
+                reason: format!("challenge fetch failed: {e}"),
+            };
+        }
+    };
+    let challenge_nonce = challenge
+        .get("nonce")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if challenge_nonce.is_empty() {
+        log_warn!("loop: challenge response missing nonce");
+        return IterationResult::LlmFailed {
+            reason: "challenge missing nonce".into(),
+        };
+    }
+    log_info!(
+        "loop: got challenge nonce={} for market={}",
+        challenge_nonce, market_id
+    );
+
+    // 6. Build LLM prompt with full context + challenge constraints
     let prompt = build_prompt(
         &market_id,
         &market_info,
@@ -399,6 +428,7 @@ fn run_iteration(server_url: &str, openclaw_bin: &str, agent_id: &str) -> Iterat
         slot_resets_in,
         &open_orders,
         &recent_results,
+        &challenge,
     );
 
     // 8. Call LLM via OpenClaw
@@ -442,20 +472,17 @@ fn run_iteration(server_url: &str, openclaw_bin: &str, agent_id: &str) -> Iterat
         }
     };
 
-    // Use target market from LLM if provided, otherwise use recommended
-    let final_market = if let Some(ref tm) = target_market {
-        if recommendations.iter().any(|m| {
-            m.get("market_id").and_then(|v| v.as_str()) == Some(tm.as_str())
-                || m.get("id").and_then(|v| v.as_str()) == Some(tm.as_str())
-        }) {
-            tm.clone()
-        } else {
-            log_warn!("loop: LLM suggested market {} not in available list, using {}", tm, market_id);
-            market_id.clone()
+    // Challenge is bound to `market_id` — must submit to that exact market.
+    // If LLM picked a different market, we override.
+    if let Some(ref tm) = target_market {
+        if tm != &market_id {
+            log_warn!(
+                "loop: LLM suggested market {} but challenge is for {} — overriding to challenge market",
+                tm, market_id
+            );
         }
-    } else {
-        market_id.clone()
-    };
+    }
+    let final_market = market_id.clone();
 
     const MIN_TICKETS: u32 = 100;
     let final_tickets = tickets.unwrap_or_else(|| {
@@ -486,8 +513,8 @@ fn run_iteration(server_url: &str, openclaw_bin: &str, agent_id: &str) -> Iterat
         .map(|p| format!("{}", p))
         .unwrap_or_else(|| "none".to_string());
     let canonical_body = format!(
-        "{}|{}|{}|{}|{}",
-        final_market, direction, limit_price_str, final_tickets, reasoning_hash
+        "{}|{}|{}|{}|{}|{}",
+        final_market, direction, limit_price_str, final_tickets, reasoning_hash, challenge_nonce
     );
     log_debug!("loop: canonical body = {}", canonical_body);
 
@@ -496,6 +523,7 @@ fn run_iteration(server_url: &str, openclaw_bin: &str, agent_id: &str) -> Iterat
         "prediction": direction,
         "tickets": final_tickets,
         "reasoning": reasoning,
+        "challenge_nonce": challenge_nonce,
     });
     if let Some(lp) = limit_price {
         body["limit_price"] = json!(lp);
@@ -553,6 +581,7 @@ fn build_prompt(
     slot_resets_in: u64,
     open_orders: &Option<Vec<Value>>,
     recent_results: &Option<Vec<Value>>,
+    challenge: &Value,
 ) -> String {
     // Extract market info — support both direct market object and recommend response format
     let asset = recommended.get("asset").and_then(|v| v.as_str()).unwrap_or("BTC/USDT");
@@ -579,6 +608,23 @@ fn build_prompt(
         "You are a prediction agent competing in AWP Predict WorkNet{}.\n\n",
         if persona != "none" { format!(" (persona: {})", persona) } else { String::new() }
     ));
+
+    // ── SMHL challenge (mandatory constraints, obfuscated prompt from server) ──
+    // The server returns an obfuscated natural-language prompt. Do NOT try to
+    // parse it structurally — just forward it to the LLM, which can read
+    // through the noise and produce compliant reasoning. Submissions that
+    // violate any constraint are rejected.
+    if let Some(obf) = challenge.get("prompt").and_then(|v| v.as_str()) {
+        prompt.push_str("## Server-Issued Challenge (reasoning must satisfy this in one pass)\n\n");
+        prompt.push_str(&format!(
+            "Submit only to market `{}`. The challenge below applies to your `reasoning` string.\n\n",
+            market_id
+        ));
+        prompt.push_str("--- challenge begins ---\n");
+        prompt.push_str(obf);
+        prompt.push_str("\n--- challenge ends ---\n\n");
+        prompt.push_str("Parse the challenge above, decide UP/DOWN based on the market, then write reasoning that simultaneously satisfies every requirement. The server will programmatically verify all constraints and reject non-compliant submissions.\n\n");
+    }
 
     // Persona-specific ticket sizing guidance
     match persona {
