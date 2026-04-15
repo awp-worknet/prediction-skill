@@ -317,7 +317,12 @@ Treat the `prompt` field as a set of binding requirements. Typical constraints i
 - an exact sentence count
 - a word-count range
 - a specific market snapshot number that must appear verbatim
-- a hidden letter target that three consecutive words must begin with (case-insensitive)
+- a hidden letter target that **three consecutive words** must begin with (case-insensitive)
+
+**"Three consecutive words" means three words sitting next to each other in a single sentence** — not three sentences that happen to start with those letters. The words can be anywhere in the reasoning (middle, end), but they must be **adjacent** with no other word between them. Short words under 2 letters (like "a", "I") are skipped by the checker.
+
+- Target `KIG`, VALID: "...the market shows **K**een **I**ntraday **G**rowth right now..." — K/I/G begin three words in a row.
+- Target `KIG`, INVALID: "**K**eeping watch on BTC... **I**ntraday volatility is high... **G**rowth seems likely." — K/I/G start three different sentences with other words in between; the checker rejects this even though it looks "stylistically" right.
 
 Decide UP or DOWN from the market data first, then compose sentences that satisfy every requirement in a single pass. Do NOT let constraint letters bias your direction.
 
