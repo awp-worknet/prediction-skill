@@ -33,7 +33,6 @@ pub fn run(server_url: &str) -> Result<()> {
 
     let data = resp.get("data").cloned().unwrap_or(json!({}));
     let fed = data.get("fed").and_then(|v| v.as_i64()).unwrap_or(0);
-    let agents = data.get("agents").cloned().unwrap_or(json!([]));
 
     log_info!("admin-chip-feed: fed {} agents", fed);
 

@@ -5,7 +5,7 @@ use serde_json::json;
 
 use crate::client::ApiClient;
 use crate::output::{Internal, Output};
-use crate::{log_debug, log_error, log_info};
+use crate::{log_error, log_info};
 
 pub fn run(server_url: &str, market: Option<String>, status: &str, limit: u32) -> Result<()> {
     log_info!("orders: fetching orders (status={}, limit={}) from {}", status, limit, server_url);

@@ -157,11 +157,7 @@ pub fn run(server_url: &str, args: SubmitArgs) -> Result<()> {
                     args.prediction,
                     args.tickets,
                     args.reasoning.chars().take(50).collect::<String>(),
-                    if args.limit_price.is_some() {
-                        format!(" --limit-price {}", args.limit_price.unwrap())
-                    } else {
-                        String::new()
-                    }
+                    args.limit_price.map(|p| format!(" --limit-price {}", p)).unwrap_or_default()
                 )),
                 ..Default::default()
             },
