@@ -119,29 +119,6 @@ impl Output {
         }
     }
 
-    pub fn error(
-        user_message: impl Into<String>,
-        code: impl Into<String>,
-        category: impl Into<String>,
-        retryable: bool,
-        suggestion: impl Into<String>,
-        internal: Internal,
-    ) -> Self {
-        Self {
-            ok: false,
-            user_message: user_message.into(),
-            data: None,
-            error: Some(ErrorDetail {
-                code: code.into(),
-                category: category.into(),
-                retryable,
-                suggestion: suggestion.into(),
-                debug: None,
-            }),
-            _internal: internal,
-        }
-    }
-
     /// Create an error output with additional debug info attached.
     pub fn error_with_debug(
         user_message: impl Into<String>,
