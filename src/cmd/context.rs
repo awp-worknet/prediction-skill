@@ -2,7 +2,6 @@
 ///
 /// This is the command the LLM calls every round after preflight passes.
 /// Returns everything needed to make a prediction decision.
-
 use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;

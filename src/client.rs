@@ -4,7 +4,6 @@
 ///   - Request: method, URL, auth headers present
 ///   - Response: status code, body size, elapsed time
 ///   - On error: full response body for diagnosis
-
 use anyhow::{bail, Context, Result};
 use reqwest::{blocking::Client, StatusCode};
 use serde_json::Value;

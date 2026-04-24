@@ -20,7 +20,6 @@
 ///   - Submission with error recovery
 ///   - Adaptive backoff on empty markets or errors
 ///   - Graceful shutdown on SIGINT/SIGTERM
-
 use anyhow::{Context, Result};
 use serde_json::{json, Value};
 use std::io::Write;

@@ -6,7 +6,6 @@
 ///   3. awp-wallet subprocess     — production (calls `awp-wallet sign-message ...`)
 ///
 /// Diagnostic output goes to stderr via log_debug!/log_info!/log_error!.
-
 use anyhow::{bail, Context, Result};
 use chrono::Utc;
 use k256::ecdsa::{signature::hazmat::PrehashSigner, SigningKey};

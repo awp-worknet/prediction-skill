@@ -9,7 +9,6 @@
 ///   AWP_DEV_MODE         Set to "true" to use dev signature bypass
 ///   AWP_WALLET_TOKEN     Session token from awp-wallet (optional, for backward compat)
 ///   AWP_AGENT_ID         Agent ID for awp-wallet multi-agent support
-
 mod auth;
 mod awp_register;
 mod client;

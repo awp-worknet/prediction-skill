@@ -1,5 +1,4 @@
 /// result -- query the outcome of a specific market and this agent's prediction.
-
 use anyhow::Result;
 use serde_json::json;
 

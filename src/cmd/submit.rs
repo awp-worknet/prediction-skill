@@ -2,7 +2,6 @@
 ///
 /// Builds and signs the request, then POSTs to /api/v1/predictions.
 /// Logs full request/response details for debugging.
-
 use anyhow::Result;
 use serde_json::json;
 

@@ -1,5 +1,4 @@
 /// history — show recent prediction history for this agent.
-
 use anyhow::Result;
 use serde_json::json;
 

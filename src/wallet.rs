@@ -3,7 +3,6 @@
 /// CRITICAL: `awp-wallet init` on an existing wallet creates a NEW wallet
 /// and loses access to the old one. These functions ensure we never
 /// suggest `init` when a wallet already exists.
-
 use std::path::PathBuf;
 
 use crate::auth::find_awp_wallet;
