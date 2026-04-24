@@ -2,7 +2,6 @@
 ///
 /// Humans can run this to understand their wallet state before taking action.
 /// Outputs clear guidance on what's safe to do.
-
 use anyhow::Result;
 use serde_json::json;
 

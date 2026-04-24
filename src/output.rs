@@ -11,7 +11,6 @@
 ///   - All commands emit structured stderr logs via `log_debug!` / `log_info!` / `log_warn!` / `log_error!`
 ///   - Set PREDICT_DEBUG=1 to see debug-level output (verbose)
 ///   - Info/warn/error are always printed to stderr
-
 use serde::Serialize;
 use serde_json::Value;
 

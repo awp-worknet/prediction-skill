@@ -1,5 +1,4 @@
 /// orders — list agent's orders (open, filled, cancelled).
-
 use anyhow::Result;
 use serde_json::json;
 

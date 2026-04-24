@@ -10,7 +10,6 @@
 /// with error details, debug info, and _internal.next_command for recovery.
 ///
 /// On first run (no persona set), presents persona choices for user selection.
-
 use anyhow::Result;
 use serde_json::json;
 

@@ -1,5 +1,4 @@
 /// status — show current agent state.
-
 use anyhow::Result;
 use serde_json::json;
 

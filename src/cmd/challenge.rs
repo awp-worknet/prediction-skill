@@ -2,7 +2,6 @@
 ///
 /// The returned nonce must be passed to `submit --challenge-nonce ...`.
 /// Reasoning submitted must satisfy all constraints in this challenge.
-
 use anyhow::Result;
 use serde_json::json;
 

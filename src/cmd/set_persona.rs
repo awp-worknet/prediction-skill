@@ -1,5 +1,4 @@
 /// set-persona — update the agent's persona (7-day cooldown).
-
 use anyhow::Result;
 use serde_json::json;
 

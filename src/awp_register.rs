@@ -4,7 +4,6 @@
 ///   1. JSON-RPC address.check → isRegistered?
 ///   2. If not: registry.get → nonce.get → build EIP-712 SetRecipient → sign → relay
 ///   3. Poll address.check until confirmed
-
 use anyhow::{bail, Context, Result};
 use reqwest::blocking::Client;
 use serde_json::{json, Value};

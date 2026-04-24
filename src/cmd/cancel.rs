@@ -1,5 +1,4 @@
 /// cancel — cancel an open order and refund locked chips.
-
 use anyhow::Result;
 use serde_json::json;
 
