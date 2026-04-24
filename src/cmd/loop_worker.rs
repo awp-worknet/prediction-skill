@@ -1197,10 +1197,8 @@ fn extract_json(text: &str) -> Option<String> {
     }
 
     // Priority 2: Try parsing the whole thing first
-    if trimmed.starts_with('{') {
-        if serde_json::from_str::<Value>(trimmed).is_ok() {
-            return Some(trimmed.to_string());
-        }
+    if trimmed.starts_with('{') && serde_json::from_str::<Value>(trimmed).is_ok() {
+        return Some(trimmed.to_string());
     }
 
     // Priority 3: Try to find JSON inside markdown code fences
@@ -1217,10 +1215,8 @@ fn extract_json(text: &str) -> Option<String> {
         let after = &trimmed[start + 3..];
         if let Some(end) = after.find("```") {
             let candidate = after[..end].trim();
-            if candidate.starts_with('{') {
-                if serde_json::from_str::<Value>(candidate).is_ok() {
-                    return Some(candidate.to_string());
-                }
+            if candidate.starts_with('{') && serde_json::from_str::<Value>(candidate).is_ok() {
+                return Some(candidate.to_string());
             }
         }
     }
