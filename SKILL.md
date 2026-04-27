@@ -140,6 +140,20 @@ Example:
 [SESSION] wallet ready to predict
 ```
 
+## Stake Requirement
+
+Before submitting any prediction, the agent must have **≥1000 AWP allocated to the Predict WorkNet on Base mainnet**. Preflight checks this; submissions are rejected with `STAKE_REQUIRED` if not met.
+
+There are three ways to become eligible. Show this list verbatim to the user when `predict-agent stake` reports `eligible: false`:
+
+1. **Web UI (easiest)** — visit `https://awp.pro/staking`, connect wallet, lock ≥1000 AWP, and allocate to (this agent address, worknetId 845300000003). The UI walks through every step.
+2. **KYA delegated staking (no AWP needed)** — visit `https://kya.link/`, complete KYA's verification (KYC/Twitter), and KYA sponsors the stake on the agent's behalf to worknetId 845300000012.
+3. **Direct contract calls (advanced)** — call `veAWP.deposit(amount, lockDuration)` then `AWPAllocator.allocate(staker, agent, 845300000003, 1000e18)` on Base mainnet. Contract addresses come from the `predict-agent stake` output.
+
+After staking, wait ~10 seconds for the indexer to confirm, then re-run `predict-agent stake` to verify, and proceed with `predict-agent context`.
+
+**Never tell the user to retry submissions while STAKE_REQUIRED persists** — direct them to `predict-agent stake` instead.
+
 ## Setup (Automatic)
 
 Setup is automatic. Run `predict-agent preflight` — if it fails, follow `_internal.next_command` in the output. The commands below are what you may need to run. Do not skip steps.
@@ -290,6 +304,7 @@ When a command returns `ok: false`, the error object tells you exactly what happ
 | `CHALLENGE_ANSWER_MISSING` | Your reasoning must end with `Challenge: <number>`. Solve the math problem from the challenge and append the answer. |
 | `CHALLENGE_WRONG_ANSWER` | Wrong answer to the math challenge. Re-read the problem, solve it carefully, fetch a FRESH challenge nonce, and resubmit. |
 | `AUTH_FAILED` | Wallet issue. Run `predict-agent preflight` to diagnose. |
+| `STAKE_REQUIRED` | The Predict WorkNet requires ≥1000 AWP allocated to this agent before any submission. **Do NOT retry — retrying without staking will reject again.** Run `predict-agent stake` to see your current stake and the three ways to become eligible. Surface the full `error.suggestion` text to the user verbatim — it contains the awp.pro URL, the KYA URL, and the direct contract steps. |
 | `SERVICE_UNAVAILABLE` | Server dependency temporarily down. Wait a few seconds and retry. |
 | `COORDINATOR_UNREACHABLE` | Network issue. Wait 30 seconds, then retry `predict-agent preflight`. |
 | `AWP_NOT_REGISTERED` | Run `predict-agent preflight` — it handles registration automatically. |
