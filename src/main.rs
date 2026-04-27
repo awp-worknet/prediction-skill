@@ -99,6 +99,9 @@ enum Commands {
     /// Show current agent status (balance, submissions, etc.)
     Status,
 
+    /// Check on-chain stake status + show how to stake (3 paths) if not eligible
+    Stake,
+
     /// Show the outcome of a specific market
     Result {
         /// Market ID
@@ -194,6 +197,7 @@ fn main() -> Result<()> {
         )?,
         Commands::Challenge { market } => cmd::challenge::run(server, &market)?,
         Commands::Status => cmd::status::run(server)?,
+        Commands::Stake => cmd::stake::run(server)?,
         Commands::Result { market } => cmd::result::run(server, &market)?,
         Commands::History { limit } => cmd::history::run(server, limit)?,
         Commands::SetPersona { persona } => cmd::set_persona::run(server, &persona)?,

@@ -257,6 +257,83 @@ pub fn run(server_url: &str) -> Result<()> {
         }
     };
 
+    // ── Step 5/5: on-chain stake check ────────────────────────────────
+    // Predict requires ≥1000 AWP allocated to (this agent, PREDICT_WID)
+    // before submissions are accepted. We hit the read endpoint; if not
+    // eligible, fail-fast with clear next_command rather than letting
+    // submit fail later.
+    log_info!("preflight [5/5]: checking on-chain stake");
+    match client.get_auth("/api/v1/agents/me/stake") {
+        Ok(stake_resp) => {
+            let stake_data = stake_resp.get("data").cloned().unwrap_or(json!({}));
+            let eligible = stake_data
+                .get("eligible")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let gate_mode = stake_data
+                .get("gate_mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("off");
+
+            // Only block when the server is in `enforce` mode. In `monitor`
+            // or `off` we still warn but let preflight proceed so users can
+            // see and act on the gap before it bites.
+            if !eligible && gate_mode == "enforce" {
+                let current_awp = stake_data
+                    .get("current_stake_awp")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0");
+                let required_awp = stake_data
+                    .get("required_stake_awp")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("1000");
+                log_error!("preflight [5/5]: NOT staked ({} / {} AWP)",
+                           current_awp, required_awp);
+                Output::error_with_debug(
+                    format!(
+                        "Stake gate: agent has {current_awp} AWP allocated to Predict, \
+                         but ≥{required_awp} AWP is required. Run `predict-agent stake` \
+                         for the three ways to become eligible (awp.pro web UI, \
+                         KYA delegated staking, or direct contract calls)."
+                    ),
+                    "STAKE_REQUIRED",
+                    "stake",
+                    false,
+                    "Run `predict-agent stake` and follow whichever path fits you.",
+                    json!({
+                        "step": "5_stake_check",
+                        "current_stake_awp": current_awp,
+                        "required_stake_awp": required_awp,
+                        "stake_data": stake_data,
+                    }),
+                    Internal {
+                        next_action: "stake_required".into(),
+                        next_command: Some("predict-agent stake".into()),
+                        progress: Some("5/5".into()),
+                        ..Default::default()
+                    },
+                )
+                .print();
+                return Ok(());
+            }
+            if !eligible {
+                log_info!(
+                    "preflight [5/5]: NOT staked yet (gate_mode={}) — \
+                     proceeding but submits will start failing once enforce mode is on. \
+                     Run `predict-agent stake` to set up.",
+                    gate_mode
+                );
+            } else {
+                log_info!("preflight [5/5]: stake OK");
+            }
+        }
+        Err(e) => {
+            // Don't fail preflight if the read endpoint is briefly down —
+            // submit will surface STAKE_REQUIRED at the actual gate.
+            log_info!("preflight [5/5]: stake check skipped ({})", e);
+        }
+    }
+
     let data = status.get("data").cloned().unwrap_or(json!({}));
     let total_predictions = data
         .get("total_predictions")

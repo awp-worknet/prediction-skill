@@ -8,6 +8,7 @@ pub mod orders;
 pub mod preflight;
 pub mod result;
 pub mod set_persona;
+pub mod stake;
 pub mod status;
 pub mod submit;
 pub mod wallet_check;

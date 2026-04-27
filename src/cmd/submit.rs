@@ -208,11 +208,31 @@ pub fn run(server_url: &str, args: SubmitArgs) -> Result<()> {
                 suggestion
             );
 
+            // STAKE_REQUIRED is fundamentally different from other rejections:
+            // it's a permission gate, not a content/timing issue. Route the
+            // user to `predict-agent stake` for the three-path guidance and
+            // never auto-retry — retrying without staking will just reject
+            // again. The suggestion text from the server already contains
+            // the full instructions (awp.pro / KYA / direct contracts).
+            let is_stake_block = code == "STAKE_REQUIRED";
+            let next_cmd = if is_stake_block {
+                "predict-agent stake".to_string()
+            } else {
+                "predict-agent context".to_string()
+            };
+            let next_action = if is_stake_block {
+                "stake_required".to_string()
+            } else if retryable {
+                "retry".to_string()
+            } else {
+                "fix_command".to_string()
+            };
+
             Output::error_with_debug(
                 format!("Submission failed: {}", extract_message(&err_str)),
                 &code,
                 &category,
-                retryable,
+                retryable && !is_stake_block,
                 &suggestion,
                 json!({
                     "raw_error": err_str,
@@ -224,13 +244,9 @@ pub fn run(server_url: &str, args: SubmitArgs) -> Result<()> {
                     "server_url": server_url,
                 }),
                 Internal {
-                    next_action: if retryable {
-                        "retry".into()
-                    } else {
-                        "fix_command".into()
-                    },
-                    wait_seconds: if retryable { Some(30) } else { None },
-                    next_command: Some("predict-agent context".into()),
+                    next_action,
+                    wait_seconds: if retryable && !is_stake_block { Some(30) } else { None },
+                    next_command: Some(next_cmd),
                     ..Default::default()
                 },
             )
