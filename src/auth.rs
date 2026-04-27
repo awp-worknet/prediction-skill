@@ -15,6 +15,21 @@ use std::path::PathBuf;
 
 use crate::{log_debug, log_error, log_info};
 
+/// Return the first env var from `keys` that is set and non-empty.
+/// Used to bridge env-var conventions across host environments
+/// (predict-agent legacy: AWP_WALLET_TOKEN / AWP_AGENT_ID;
+/// openclaw / cursor / cipher: AWP_SESSION_TOKEN / AWP_SESSION_ID).
+fn first_nonempty_env(keys: &[&str]) -> String {
+    for k in keys {
+        if let Ok(v) = std::env::var(k) {
+            if !v.is_empty() {
+                return v;
+            }
+        }
+    }
+    String::new()
+}
+
 pub struct AuthHeaders {
     pub address: String,
     pub timestamp: String,
@@ -127,12 +142,20 @@ fn sign_with_wallet(
     path: &str,
     body_hash: &str,
 ) -> Result<String> {
-    // Token is now optional — awp-wallet works without session tokens
-    let token = std::env::var("AWP_WALLET_TOKEN").unwrap_or_default();
+    // Token can come from several env vars depending on the host
+    // environment (legacy AWP_WALLET_TOKEN; openclaw/cursor convention
+    // AWP_SESSION_TOKEN). Whichever is set first wins. Without a token,
+    // awp-wallet falls back to its default keystore — which on multi-wallet
+    // hosts is NOT the per-agent session wallet, producing a mismatched
+    // signer address and a confusing server-side AUTH_FAILED.
+    let token = first_nonempty_env(&["AWP_WALLET_TOKEN", "AWP_SESSION_TOKEN"]);
+    let agent_id = first_nonempty_env(&["AWP_AGENT_ID", "AWP_SESSION_ID"]);
     if !token.is_empty() {
-        log_debug!("AWP_WALLET_TOKEN present (length={})", token.len());
+        log_debug!("wallet token present (length={})", token.len());
+    } else if !agent_id.is_empty() {
+        log_debug!("no token but AWP_AGENT_ID/SESSION_ID set: {}", agent_id);
     } else {
-        log_debug!("AWP_WALLET_TOKEN not set — using tokenless mode");
+        log_debug!("no token / agent id — using awp-wallet default keystore");
     }
 
     let message = format!(
@@ -147,13 +170,18 @@ fn sign_with_wallet(
 
     let wallet_bin = find_awp_wallet()?;
 
-    // Build args — only include --token if provided (backward compat)
-    let mut args = vec!["sign-message"];
+    // Build args. Pass `--token` when present (most precise selector); fall
+    // back to `--agent` when a session/agent id is set (newer wallet builds
+    // accept it for sign-message, mirroring how `receive` already uses it).
+    let mut args: Vec<&str> = vec!["sign-message"];
     if !token.is_empty() {
         args.extend_from_slice(&["--token", &token]);
-        log_debug!("Calling: {} sign-message --token *** --message <...>", wallet_bin.display());
+        log_debug!("calling: {} sign-message --token *** --message <...>", wallet_bin.display());
+    } else if !agent_id.is_empty() {
+        args.extend_from_slice(&["--agent", &agent_id]);
+        log_debug!("calling: {} sign-message --agent {} --message <...>", wallet_bin.display(), agent_id);
     } else {
-        log_debug!("Calling: {} sign-message --message <...>", wallet_bin.display());
+        log_debug!("calling: {} sign-message --message <...>", wallet_bin.display());
     }
     args.extend_from_slice(&["--message", &message]);
 
@@ -263,17 +291,25 @@ fn derive_address_from_key(pk_hex: &str) -> Result<String> {
 }
 
 fn get_address_from_wallet() -> Result<String> {
-    let agent_id = std::env::var("AWP_AGENT_ID").unwrap_or_default();
-    let token = std::env::var("AWP_WALLET_TOKEN").unwrap_or_default();
+    // Match the env-var fallback chain used by sign_with_wallet so the
+    // address `receive` returns is the same wallet `sign-message` will
+    // sign with. Mismatch here is the #1 source of mysterious AUTH_FAILED
+    // on shared hosts (cursor / openclaw etc).
+    let agent_id = first_nonempty_env(&["AWP_AGENT_ID", "AWP_SESSION_ID"]);
+    let token = first_nonempty_env(&["AWP_WALLET_TOKEN", "AWP_SESSION_TOKEN"]);
 
-    let mut args = vec!["receive"];
+    let mut args: Vec<&str> = vec!["receive"];
     if !agent_id.is_empty() {
         args.extend_from_slice(&["--agent", &agent_id]);
-        log_debug!("Using AWP_AGENT_ID: {}", agent_id);
+        log_debug!("receive --agent {}", agent_id);
     }
-    // Note: `awp-wallet receive` does NOT accept --token.
-    // It reads the address directly from keystore metadata.
-    log_debug!("AWP_WALLET_TOKEN present: {}", !token.is_empty());
+    // Newer awp-wallet builds accept --token on `receive` too (when the
+    // token uniquely identifies a session wallet). Pass it when we have
+    // it and have NOT already disambiguated via --agent.
+    if !token.is_empty() && agent_id.is_empty() {
+        args.extend_from_slice(&["--token", &token]);
+        log_debug!("receive --token *** (token len={})", token.len());
+    }
 
     let wallet_bin = find_awp_wallet()?;
     log_debug!("Calling: {} {}", wallet_bin.display(), args.join(" "));
